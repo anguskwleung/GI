@@ -91,18 +91,53 @@
     field('helperUpgrade','心臟病及癌症附加保障','<select id="helperUpgrade"><option value="none">不附加</option><option value="classic">標準計劃</option><option value="deluxe">特級計劃</option></select>') +
     field('helperStart','預計保障生效日期（選填）','<input id="helperStart" type="date">') +
     '<p class="source-note">多人報價按相同年期及附加保障逐人計算；投保時每位家傭須另填申請表。不同選擇請分開報價。</p><p class="notice">參考 2021 年保費表（文件列明已含徵費），並非已確認現行價。請先核實最新收費、承保資格及條款。</p>';
-  const benefits = {
-    home:'<li>法律責任：每年最高 HK$10,000,000。</li><li>家居財物：按面積每年最高 HK$750,000／1,000,000／1,250,000；另有每組／每件限額。</li><li>臨時居所總額：每次意外最高 HK$60,000；分項設每天限額。</li><li>電子產品維修：每部手機最高 HK$2,500；每部筆記型／平板電腦最高 HK$5,000，通常每年最多兩次。</li><li>多層大廈、樓齡40年或以下居所，家居財物標準自負額為零；並非所有項目均無自負額。</li><li>樓宇附加保障按重建費用；山泥傾瀉及地陷自負額為 HK$10,000 或經評定損失10%，以較高者為準。</li><li>自然損耗、機件故障、無法解釋的損失及違例僭建等不受保。</li>',
-    helper:'<li>綜合計劃僱主責任：每宗事故最高 HK$100,000,000。</li><li>住院每保單年度最高 HK$80,000；房膳每日 HK$300、每次手術 HK$15,000；住院每宗索償自負額 HK$300。</li><li>非網絡門診每年最高 HK$3,000；網絡門診每年最多20次，按醫生類別設自負費。</li><li>補聘每年最高 HK$5,000；遣送每年最高 HK$10,000。</li><li>醫療及牙齒一般等候期15日；心臟病及癌症附加保障90日。投保前已存在傷疾等不受保。</li>'
-  };
+  function benefitRows(key) {
+    if (key === 'home') {
+      const area = Number($('#homeArea').value), gross = $('#areaBasis').value === 'gross';
+      const contents = area <= (gross ? 700 : 560) ? 750000 : area <= (gross ? 1500 : 1200) ? 1000000 : 1250000;
+      const rows = [
+        ['法律責任', '每年最高 HK$10,000,000'],
+        ['家居財物', `每年總限額 ${money(contents)}`],
+        ['臨時居所及膳食', '每次意外總額 HK$60,000；分項設每天限額'],
+        ['手機維修', '每部最高 HK$2,500'],
+        ['筆記型／平板電腦維修', '每部最高 HK$5,000'],
+        ['電子產品維修次數', '通常每保單年度最多兩次'],
+        ['家居財物標準自負額', '多層大廈、樓齡40年或以下居所為零；其他情況按條款']
+      ];
+      if ($('#building').checked) rows.push(['樓宇意外損毀（已選）', '按重建費用'], ['樓宇山泥傾瀉／地陷自負額', 'HK$10,000 或經評定損失10%，以較高者為準']);
+      if ($('#parking').checked) rows.push(['停車位法律責任（已選）', '保障細則及限額按正式保單確認']);
+      if ($('#charger').checked) rows.push(['電動車充電設施法律責任（已選）', '保障細則及限額按正式保單確認']);
+      return rows;
+    }
+    if ($('#helperType').value === 'ec') return [['僱主責任', '每宗事故最高 HK$100,000,000'], ['保障範圍', '只包括僱主責任'], ['醫療、補聘及其他綜合保障', '不包括']];
+    const rows = [
+      ['僱主責任', '每宗事故最高 HK$100,000,000'],
+      ['住院保障', '每保單年度最高 HK$80,000'],
+      ['住院房租及膳食', '每日最高 HK$300'],
+      ['手術費用', '每次最高 HK$15,000'],
+      ['住院自負額', '每宗索償 HK$300'],
+      ['非網絡門診', '每年最高 HK$3,000；另設每次及分項限額'],
+      ['網絡門診', '每年最多20次；自負費按醫生類別'],
+      ['補聘家傭', '每年最高 HK$5,000'],
+      ['遣送費用', '每年最高 HK$10,000'],
+      ['醫療及牙齒等候期', '一般15日；詳情及例外按條款']
+    ];
+    const upgrade = $('#helperUpgrade').value;
+    if (upgrade !== 'none') rows.push(['心臟病及癌症附加保障（已選）', `每年最高 ${money(upgrade === 'classic' ? 50000 : 100000)}`], ['附加保障等候期', '一般90日']);
+    return rows;
+  }
+  function discountFields(key) {
+    return `<section class="product-discounts"><h3>優惠折扣</h3><fieldset><legend>套用至基本保費及已選附加保障；多選按次序相乘</legend><div class="discount-grid">${[[0.10,'九折','90%'],[0.15,'八五折','85%'],[0.20,'八折','80%'],[0.25,'七五折','75%'],[0.30,'七折','70%'],[0.20,'同事八折','80%']].map(([value,label,rate],i)=>`<label class="${i===5?'staff-rate':''}"><input type="checkbox" name="${key}Discount" value="${value}" data-label="${label}"><span>${label}<small>${rate}</small></span></label>`).join('')}</div><output id="${key}DiscountSummary" class="discount-summary" aria-live="polite">未套用折扣（原價）</output><p class="source-note">折扣為試算設定，是否適用及最終收費須由保險公司確認。家居徵費仍待確認；家傭按文件含徵費參考價試算。</p></fieldset></section>`;
+  }
   for (const [key,title,subtitle,fields] of [
     ['home','家居保險','Zurich 自選家居保險計劃－住戶保險｜標準計劃',homeFields],
     ['helper','家傭保險','Zurich 傭易保／本地鐘點家傭僱員補償',helperFields]
   ]) {
     const section = document.createElement('main');
     section.id = `${key}Workspace`; section.className='workspace new-workspace'; section.hidden=true;
-    section.innerHTML=`<form id="${key}Form" class="quote-form"><h2>${title}</h2><p class="intro">${subtitle}</p>${fields}<p id="${key}Error" class="error-message" role="alert" hidden></p></form><aside class="result-panel" aria-live="polite"><article id="${key}Quote" class="quote-paper"></article><div class="result-actions"><button type="button" class="secondary-button" data-copy-quote="${key}">複製報價文字</button><button type="button" class="dark-button" data-capture="${key}">截圖模式</button></div><section class="document-links"><div><h2>產品文件</h2><p>資料來源：${key==='home'?'ZHM-001-08-2026C-02，第2–3頁':'ZPP-003-04-2021，第3–4頁；投保表 ZDH-AGT-EF-07-2021'}</p></div><a href="documents/zurich-${key}.pdf" target="_blank" rel="noopener">保障及保費表 PDF</a>${key==='helper'?'<a href="documents/zurich-helper-form.pdf" target="_blank" rel="noopener">投保表及所需資料</a>':''}</section></aside>`;
+    section.innerHTML=`<form id="${key}Form" class="quote-form"><h2>${title}</h2><p class="intro">${subtitle}</p>${fields}${discountFields(key)}<p id="${key}Error" class="error-message" role="alert" hidden></p></form><aside class="result-panel" aria-live="polite"><article id="${key}Quote" class="quote-paper"></article><div class="result-actions"><label class="benefit-toggle" id="${key}BenefitControl"><span><strong>顯示保障內容</strong><small>開啟後會包括喺截圖及複製文字</small></span><span class="switch-control"><input id="${key}BenefitToggle" type="checkbox" role="switch" aria-controls="${key}BenefitSummary"><span class="switch-track" aria-hidden="true"></span></span></label><button type="button" class="secondary-button" data-copy-quote="${key}">複製報價文字</button><button type="button" class="dark-button" data-capture="${key}">截圖模式</button></div><section class="document-links"><div><h2>產品文件</h2><p>資料來源：${key==='home'?'ZHM-001-08-2026C-02，第2–3頁':'ZPP-003-04-2021，第3–4頁；投保表 ZDH-AGT-EF-07-2021'}</p></div><a href="documents/zurich-${key}.pdf" target="_blank" rel="noopener">保障及保費表 PDF</a>${key==='helper'?'<a href="documents/zurich-helper-form.pdf" target="_blank" rel="noopener">投保表及所需資料</a>':''}</section></aside>`;
     $('#travelWorkspace').after(section);
+    section.querySelector(`#${key}BenefitToggle`).addEventListener('change', () => renderQuote(key));
     section.querySelector('form').addEventListener('submit', e => e.preventDefault());
     section.querySelector('form').addEventListener('input', () => renderQuote(key));
     section.querySelector('form').addEventListener('change', () => renderQuote(key));
@@ -169,16 +204,31 @@
       if(extra) summary+=` 心臟病及癌症附加保障每保單年度最高 ${money(upgrade==='classic'?50000:100000)}，一般等候期90日。`;
       note='來源：ZPP-003-04-2021 第3–4頁。2021年歷史文件參考價，文件列明已包括保險徵費。現行保費、徵費及承保要求須向保險公司核實；本頁並非正式承保確認。';
     }
+    const choices = [...form.querySelectorAll(`input[name="${key}Discount"]:checked`)];
+    const rate = choices.reduce((result,input) => result * (1 - Number(input.value)), 1);
+    const round = value => Math.round((value + Number.EPSILON) * 100) / 100;
+    const discountedTotal = round(total * rate), saving = round(total - discountedTotal);
+    const discountLabel = choices.length ? `${choices.map(input => input.dataset.label).join(' × ')}（實付 ${Number((rate * 100).toFixed(4))}%）` : '未套用折扣（原價）';
+    $(`#${key}DiscountSummary`).textContent = discountLabel;
+    const showBenefits = $(`#${key}BenefitToggle`).checked;
+    $(`#${key}BenefitControl`).classList.toggle('is-active', showBenefits);
     article.replaceChildren();
     const header=document.createElement('header');header.className='quote-paper__header';const h2=document.createElement('h2');h2.textContent=title;header.append(h2);article.append(header);
     const dl=document.createElement('dl');dl.className='quote-facts';for(const [label,value] of facts){const div=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;div.append(dt,dd);dl.append(div);}article.append(dl);
     const prices=document.createElement('div');prices.className='quote-lines';for(const [label,value] of lines){const div=document.createElement('div'),span=document.createElement('span'),strong=document.createElement('strong');span.textContent=label;strong.textContent=money(value);div.append(span,strong);prices.append(div);}article.append(prices);
-    const totals=document.createElement('div');totals.className='totals';totals.innerHTML=`<div class="grand-total"><span>${key==='home'?'年保費表小計':'全期參考保費（已含徵費）'}</span><strong>${money(total)}</strong></div>`;article.append(totals);
+    const totals=document.createElement('div');totals.className='totals';
+    totals.innerHTML=`<div><span>原價保費${key==='home'?'小計':''}</span><strong>${money(total)}</strong></div>${choices.length?`<div class="product-discount-line"><span>優惠折扣<br>${discountLabel}</span><strong>− ${money(saving)}</strong></div>`:''}<div class="grand-total"><span>${key==='home'?'年保費表小計':'全期參考保費（已含徵費）'}${choices.length?'・折後':''}</span><strong>${money(discountedTotal)}</strong></div>`;article.append(totals);
     const desc=document.createElement('p');desc.className='disclaimer';desc.textContent=summary;article.append(desc);
-    const details=document.createElement('details');details.className='disclaimer';details.innerHTML=`<summary>主要保障及注意事項</summary><ul class="benefits">${key==='helper'&&$('#helperType').value==='ec'?'<li>本地鐘點家傭計劃只包括僱主責任，每宗事故最高 HK$100,000,000。</li>':benefits[key]}</ul>`;article.append(details);
-    const disclaimer=document.createElement('p');disclaimer.className='disclaimer';disclaimer.textContent=note+' 實際以正式保單條款為準。';article.append(disclaimer);
+    const details=document.createElement('section');details.className='benefit-summary product-benefit-summary';details.id=`${key}BenefitSummary`;details.hidden=!showBenefits;
+    const heading=document.createElement('div');heading.className='benefit-summary__heading';
+    const headingTitle=document.createElement('h3');headingTitle.textContent='主要保障內容';
+    const headingNote=document.createElement('span');headingNote.textContent='港幣 · 最高保障額';heading.append(headingTitle,headingNote);details.append(heading);
+    const rows=document.createElement('div');rows.className='benefit-rows';
+    for(const [label,value] of benefitRows(key)) {const row=document.createElement('div'),name=document.createElement('span'),amount=document.createElement('strong');name.textContent=label;amount.textContent=value;row.append(name,amount);rows.append(row);}details.append(rows);
+    const benefitNote=document.createElement('p');benefitNote.textContent=key==='home'?'以上設有每件／每組及其他分項限額；自然損耗、機件故障、無法解釋的損失及違例僭建等不受保。並非所有保障均無自負額。':'以上設有分項限額、自負額及等候期。投保前已存在傷疾等不受保；本地鐘點計劃不包括綜合計劃保障。';details.append(benefitNote);article.append(details);
+    const disclaimer=document.createElement('p');disclaimer.className='disclaimer';disclaimer.textContent=note+(choices.length?' 所選優惠只供試算，折扣適用性及最終收費須另行確認。':'')+' 實際以正式保單條款為準。';article.append(disclaimer);
     const footer=document.createElement('footer');footer.className='quote-paper__footer';footer.textContent=`報價日期 ${new Date().toLocaleDateString('zh-HK',{timeZone:'Asia/Hong_Kong'})} · 金額為港幣 · 文件參考價`;article.append(footer);
-    savedQuotes[key]=[title,...facts.map(([a,b])=>`${a}：${b}`),...lines.map(([a,b])=>`${a}：${money(b)}`),`${key==='home'?'年保費表小計':'全期參考保費（已含徵費）'}：${money(total)}`,summary,note,footer.textContent].join('\n');
+    savedQuotes[key]=article.innerText;
   }
   document.querySelectorAll('[data-product]').forEach(button=>button.addEventListener('click',()=>{
     active=button.dataset.product;
